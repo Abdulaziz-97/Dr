@@ -1,0 +1,38 @@
+# Python dependencies for Bodyguard Drone Simulation
+# Install with: pip install -r requirements.txt
+
+# Core ML/CV libraries
+numpy>=1.21.0
+opencv-python>=4.5.0
+torch>=2.0.0
+torchvision>=0.15.0
+
+# YOLO object detection
+ultralytics>=8.0.0
+
+# Transformers for DINOv3
+transformers>=4.30.0
+
+# Speech-to-Text (Whisper)
+openai-whisper>=20230314
+soundfile>=0.12.0
+ffmpeg-python>=0.2.0
+
+# ROS 2 bridge dependencies
+cv-bridge
+
+# Utilities
+Pillow>=9.0.0
+matplotlib>=3.5.0
+scikit-learn>=1.0.0
+
+# Optional: Audio processing
+pyaudio>=0.2.13
+
+# Optional: Better TTS (if not using VibeVoice)
+pyttsx3>=2.90
+
+# Development tools
+pytest>=7.0.0
+black>=22.0.0
+flake8>=4.0.0
