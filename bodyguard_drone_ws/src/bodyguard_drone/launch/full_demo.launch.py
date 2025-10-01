@@ -90,15 +90,6 @@ def generate_launch_description():
         parameters=[{'use_sim_time': use_sim_time}]
     )
     
-    # Voice command node
-    voice_cmd_node = Node(
-        package='bodyguard_drone',
-        executable='voice_cmd_node.py',
-        name='voice_cmd_node',
-        output='screen',
-        parameters=[{'use_sim_time': use_sim_time}]
-    )
-    
     # TTS node
     tts_node = Node(
         package='bodyguard_drone',
@@ -155,7 +146,6 @@ def generate_launch_description():
         perception_node,
         navigation_node,
         user_event_node,
-        voice_cmd_node,
         tts_node,
         drone_control_node,
         command_parser_node,
