@@ -66,7 +66,7 @@ def generate_launch_description():
     # Perception node
     perception_node = Node(
         package='bodyguard_drone',
-        executable='perception_node',
+        executable='perception_node.py',
         name='perception_node',
         output='screen',
         parameters=[{'use_sim_time': use_sim_time}]
@@ -75,7 +75,7 @@ def generate_launch_description():
     # Navigation node
     navigation_node = Node(
         package='bodyguard_drone',
-        executable='navigation_node',
+        executable='navigation_node.py',
         name='navigation_node',
         output='screen',
         parameters=[{'use_sim_time': use_sim_time}]
@@ -84,17 +84,16 @@ def generate_launch_description():
     # User event node
     user_event_node = Node(
         package='bodyguard_drone',
-        executable='user_event_node',
+        executable='user_event_node.py',
         name='user_event_node',
         output='screen',
-        parameters=[{'use_sim_time': use_sim_time}],
-        prefix='xterm -e'  # Run in separate terminal for keyboard input
+        parameters=[{'use_sim_time': use_sim_time}]
     )
     
     # Voice command node
     voice_cmd_node = Node(
         package='bodyguard_drone',
-        executable='voice_cmd_node',
+        executable='voice_cmd_node.py',
         name='voice_cmd_node',
         output='screen',
         parameters=[{'use_sim_time': use_sim_time}]
@@ -103,7 +102,7 @@ def generate_launch_description():
     # TTS node
     tts_node = Node(
         package='bodyguard_drone',
-        executable='tts_node',
+        executable='tts_node.py',
         name='tts_node',
         output='screen',
         parameters=[{'use_sim_time': use_sim_time}]
@@ -112,7 +111,7 @@ def generate_launch_description():
     # Drone control node
     drone_control_node = Node(
         package='bodyguard_drone',
-        executable='drone_control_node',
+        executable='drone_control_node.py',
         name='drone_control_node',
         output='screen',
         parameters=[{'use_sim_time': use_sim_time}]
@@ -121,7 +120,7 @@ def generate_launch_description():
     # Command parser node
     command_parser_node = Node(
         package='bodyguard_drone',
-        executable='command_parser_node',
+        executable='command_parser_node.py',
         name='command_parser_node',
         output='screen',
         parameters=[{'use_sim_time': use_sim_time}]
