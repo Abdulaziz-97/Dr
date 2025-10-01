@@ -31,8 +31,16 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   DEPENDENCIES std_msgs
 )
 
-# Install Python package (this processes setup.py and installs entry points)
-ament_python_install_package(${PROJECT_NAME})
+install(PROGRAMS
+  bodyguard_drone/perception_node.py
+  bodyguard_drone/navigation_node.py
+  bodyguard_drone/user_event_node.py
+  bodyguard_drone/voice_cmd_node.py
+  bodyguard_drone/tts_node.py
+  bodyguard_drone/drone_control_node.py
+  bodyguard_drone/command_parser_node.py
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 # Install launch files
 install(DIRECTORY
