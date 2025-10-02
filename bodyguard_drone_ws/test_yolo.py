@@ -8,8 +8,13 @@ from ultralytics import YOLO
 import numpy as np
 
 def test_yolo():
-    print("Loading YOLO model...")
-    model = YOLO('yolov8n.pt')
+    print("Loading YOLOv11 model...")
+    try:
+        model = YOLO('yolo11n.pt')
+        print("✅ Successfully loaded YOLOv11 nano model")
+    except Exception as e:
+        print(f"⚠️  YOLOv11 not available ({e}), falling back to YOLOv8")
+        model = YOLO('yolov8n.pt')
     
     print(f"YOLO classes: {list(model.names.values())}")
     print(f"Person class ID: {list(model.names.keys())[list(model.names.values()).index('person')]}")

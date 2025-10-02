@@ -7,8 +7,8 @@ opencv-python>=4.5.0
 torch>=2.0.0
 torchvision>=0.15.0
 
-# YOLO object detection
-ultralytics>=8.0.0
+# YOLO object detection (YOLOv11 support)
+ultralytics>=8.3.0
 
 # Transformers for DINOv3
 transformers>=4.30.0
