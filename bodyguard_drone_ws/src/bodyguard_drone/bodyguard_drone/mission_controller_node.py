@@ -21,6 +21,8 @@ class MissionControllerNode(Node):
         self.mission_start_time = None
         self.person_detected = False
         self.mission_active = False
+        self.perception_ready = False
+        self.detections_received = 0
         
         # Publishers
         self.user_event_pub = self.create_publisher(UserEvent, '/user_event', 10)
@@ -34,8 +36,10 @@ class MissionControllerNode(Node):
         # Mission timer
         self.mission_timer = self.create_timer(1.0, self.mission_loop)
         
-        self.get_logger().info('Mission Controller initialized - Starting Mission Sequence')
-        self.start_mission_sequence()
+        self.get_logger().info('Mission Controller initialized - Waiting for perception node...')
+        
+        # Wait for perception to be ready before starting missions
+        self.readiness_timer = self.create_timer(2.0, self.check_readiness)
 
     def start_mission_sequence(self):
         """Start the mission sequence"""
@@ -47,8 +51,19 @@ class MissionControllerNode(Node):
         # Start Mission 1 after 5 seconds
         threading.Timer(5.0, self.execute_mission_1).start()
 
+    def check_readiness(self):
+        """Check if perception node is ready"""
+        if self.detections_received >= 3 and not self.perception_ready:
+            self.perception_ready = True
+            self.get_logger().info(' Perception node is ready! Starting mission sequence...')
+            self.readiness_timer.cancel()  # Stop checking
+            self.start_mission_sequence()
+        elif self.detections_received < 3:
+            self.get_logger().info(f'Waiting for perception... ({self.detections_received}/3 detections received)')
+
     def detections_callback(self, msg):
         """Monitor person detections"""
+        self.detections_received += 1
         self.person_detected = False
         for detection in msg.detections:
             if detection.class_name == 'person':
@@ -60,7 +75,7 @@ class MissionControllerNode(Node):
         if self.current_mission != 1:
             return
             
-        self.get_logger().info('🚨 MISSION 1: KIDNAPPING DETECTED 🚨')
+        self.get_logger().info('MISSION 1: KIDNAPPING DETECTED')
         
         # Trigger panic event
         panic_event = UserEvent()
@@ -84,30 +99,64 @@ class MissionControllerNode(Node):
     def execute_mission_2(self):
         """Mission 2: User asks about coffee shop"""
         self.current_mission = 2
-        self.get_logger().info('☕ MISSION 2: COFFEE SHOP QUERY ☕')
+        self.get_logger().info(' MISSION 2: COFFEE SHOP')
         
-        # Simulate user asking about coffee shop
+        # Step 1: Simulate user STT query
+        self.simulate_user_stt_query()
+        
+        # Step 2: Move drone to head level (immediate response)
+        threading.Timer(1.0, self.move_to_head_level).start()
+        
+        # Step 3: Process query and provide answer
+        threading.Timer(4.0, self.process_stt_and_respond).start()
+
+    def simulate_user_stt_query(self):
+        """Simulate user speaking and STT processing"""
+        self.get_logger().info('User speaks: "Is there a coffee shop nearby?"')
+        
+        # Announce STT processing
         tts_msg = NavigationInstruction()
         tts_msg.header.stamp = self.get_clock().now().to_msg()
-        tts_msg.instruction = "User query detected: Is there a coffee shop nearby?"
+        tts_msg.instruction = "I heard you ask about a coffee shop. Let me check my sensors..."
+        tts_msg.priority = 2
+        self.tts_pub.publish(tts_msg)
+
+    def process_stt_and_respond(self):
+        """Process the STT query and provide detailed response"""
+        self.get_logger().info('Processing STT query and scanning environment...')
+        
+        # Simulate processing time
+        tts_msg = NavigationInstruction()
+        tts_msg.header.stamp = self.get_clock().now().to_msg()
+        tts_msg.instruction = "Scanning environment for coffee shop landmarks..."
         tts_msg.priority = 2
         self.tts_pub.publish(tts_msg)
         
-        # Wait 3 seconds then provide answer
-        threading.Timer(3.0, self.provide_coffee_shop_answer).start()
-        
-        # Move drone to head level near person
-        threading.Timer(1.0, self.move_to_head_level).start()
+        # Provide detailed answer after 2 seconds
+        threading.Timer(2.0, self.provide_coffee_shop_answer).start()
 
     def provide_coffee_shop_answer(self):
         """Provide audio answer about coffee shop"""
+        self.get_logger().info('Coffee shop detected in environment!')
+        
         tts_msg = NavigationInstruction()
         tts_msg.header.stamp = self.get_clock().now().to_msg()
-        tts_msg.instruction = "Yes! I can see a coffee shop landmark at coordinates 4, -3. It's approximately 50 meters southeast of our current position. Would you like me to guide you there?"
+        tts_msg.instruction = "Yes! I have located a coffee shop landmark at coordinate:(X,y,z) It's approximately 50 meters southeast of our current position. The coffee shop appears to be open and accessible. Would you like me to guide you there safely?"
         tts_msg.priority = 2
         self.tts_pub.publish(tts_msg)
         
-        self.get_logger().info('Mission 2 completed - Coffee shop information provided')
+        # Follow-up positioning announcement
+        threading.Timer(6.0, self.announce_positioning_complete).start()
+        
+        self.get_logger().info('Mission 2 completed - STT query processed and answered')
+
+    def announce_positioning_complete(self):
+        """Announce that drone is positioned and ready"""
+        tts_msg = NavigationInstruction()
+        tts_msg.header.stamp = self.get_clock().now().to_msg()
+        tts_msg.instruction = "I am now positioned at your head level for optimal communication. I'm ready to assist with navigation or answer any other questions."
+        tts_msg.priority = 1
+        self.tts_pub.publish(tts_msg)
 
     def move_to_head_level(self):
         """Move drone to head level near person"""
@@ -145,21 +194,25 @@ class MissionControllerNode(Node):
     def mission_loop(self):
         """Main mission loop - monitors mission progress"""
         if not self.mission_active:
+            if not self.perception_ready:
+                return  # Still waiting for perception
             return
             
         current_time = time.time()
         elapsed = current_time - self.mission_start_time if self.mission_start_time else 0
         
-        # Log mission status every 10 seconds
-        if int(elapsed) % 10 == 0 and elapsed > 0:
-            self.get_logger().info(f'Mission Status - Current: {self.current_mission}, Elapsed: {elapsed:.0f}s, Person Detected: {self.person_detected}')
+        # Log mission status every 15 seconds
+        if int(elapsed) % 15 == 0 and elapsed > 0:
+            mission_names = {0: "Waiting", 1: "Kidnapping Response", 2: "Coffee Shop Query"}
+            current_name = mission_names.get(self.current_mission, "Unknown")
+            self.get_logger().info(f'Mission Status - {current_name} | Elapsed: {elapsed:.0f}s | Person: {self.person_detected} | Detections: {self.detections_received}')
         
-        # Auto-complete missions after timeout
-        if self.current_mission == 1 and elapsed > 30:
+        # Auto-complete missions after timeout (safety)
+        if self.current_mission == 1 and elapsed > 45:
             self.get_logger().info('Mission 1 timeout - proceeding to Mission 2')
             self.execute_mission_2()
-        elif self.current_mission == 2 and elapsed > 60:
-            self.get_logger().info('Mission sequence completed')
+        elif self.current_mission == 2 and elapsed > 90:
+            self.get_logger().info('🏁 Mission sequence completed successfully')
             self.mission_active = False
 
 
