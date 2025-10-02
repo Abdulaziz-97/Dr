@@ -24,6 +24,11 @@ class MissionControllerNode(Node):
         self.perception_ready = False
         self.detections_received = 0
         
+        # Position control
+        self.target_position = {'x': 1.5, 'y': 0.0, 'z': 1.5}  # Head level position
+        self.current_position = {'x': 0.0, 'y': 0.0, 'z': 0.5}
+        self.position_hold_active = False
+        
         # Publishers
         self.user_event_pub = self.create_publisher(UserEvent, '/user_event', 10)
         self.cmd_vel_pub = self.create_publisher(Twist, '/drone/cmd_vel', 10)
@@ -36,6 +41,9 @@ class MissionControllerNode(Node):
         # Mission timer
         self.mission_timer = self.create_timer(1.0, self.mission_loop)
         
+        # Position control timer
+        self.position_timer = self.create_timer(0.1, self.position_control_loop)
+        
         self.get_logger().info('Mission Controller initialized - Waiting for perception node...')
         
         # Wait for perception to be ready before starting missions
@@ -46,20 +54,22 @@ class MissionControllerNode(Node):
         self.mission_active = True
         self.current_mission = 1
         self.mission_start_time = time.time()
-        self.get_logger().info('🚨 STARTING MISSION SEQUENCE 🚨')
+        self.get_logger().info('STARTING MISSION SEQUENCE')
         
         # Start Mission 1 after 5 seconds
         threading.Timer(5.0, self.execute_mission_1).start()
 
     def check_readiness(self):
         """Check if perception node is ready"""
-        if self.detections_received >= 3 and not self.perception_ready:
+        # Wait for more detections to ensure YOLO is fully loaded
+        if self.detections_received >= 10 and not self.perception_ready:
             self.perception_ready = True
-            self.get_logger().info(' Perception node is ready! Starting mission sequence...')
+            self.get_logger().info('Perception node is ready! Starting mission sequence...')
             self.readiness_timer.cancel()  # Stop checking
-            self.start_mission_sequence()
-        elif self.detections_received < 3:
-            self.get_logger().info(f'Waiting for perception... ({self.detections_received}/3 detections received)')
+            # Add extra delay to ensure YOLO model is fully loaded
+            threading.Timer(5.0, self.start_mission_sequence).start()
+        elif self.detections_received < 10:
+            self.get_logger().info(f'Waiting for perception... ({self.detections_received}/10 detections received)')
 
     def detections_callback(self, msg):
         """Monitor person detections"""
@@ -159,37 +169,49 @@ class MissionControllerNode(Node):
         self.tts_pub.publish(tts_msg)
 
     def move_to_head_level(self):
-        """Move drone to head level near person"""
-        if not self.person_detected:
-            self.get_logger().warn('No person detected for head-level positioning')
-            return
-            
-        self.get_logger().info('Moving drone to head level near person')
+        """Move drone to head level near person with position hold"""
+        # Always move to head level position, even without person detection
+        self.target_position = {'x': 1.5, 'y': 0.0, 'z': 1.5}  # Head level near user
+        self.position_hold_active = True
         
-        # Move drone to head level (1.7m height) and closer to person
+        # Send movement command
         cmd = Twist()
-        
-        # Move forward towards person (assuming person is in front)
-        cmd.linear.x = 0.5  # Move forward
-        cmd.linear.z = 0.2  # Move up to head level
-        
-        # Publish movement command for 3 seconds
-        for i in range(30):  # 3 seconds at 10Hz
-            self.cmd_vel_pub.publish(cmd)
-            time.sleep(0.1)
-        
-        # Stop movement
-        cmd = Twist()
+        cmd.linear.x = 0.3  # Move forward toward user
+        cmd.linear.z = 0.5  # Move up to head level
         self.cmd_vel_pub.publish(cmd)
         
-        # Announce positioning
-        tts_msg = NavigationInstruction()
-        tts_msg.header.stamp = self.get_clock().now().to_msg()
-        tts_msg.instruction = "I am now positioned at your head level for better communication."
-        tts_msg.priority = 1
-        self.tts_pub.publish(tts_msg)
+        # Start position hold after movement
+        threading.Timer(3.0, self.activate_position_hold).start()
         
-        self.get_logger().info('Drone positioned at head level')
+        if not self.person_detected:
+            self.get_logger().warn('No person detected - moving to default head-level position')
+        else:
+            self.get_logger().info('Moving drone to head level for optimal communication')
+
+    def activate_position_hold(self):
+        """Activate position hold mode to prevent drone from falling"""
+        self.position_hold_active = True
+        self.get_logger().info('Position hold activated - drone will maintain current position')
+        
+        # Send stop command to ensure drone stops moving
+        cmd = Twist()
+        self.cmd_vel_pub.publish(cmd)
+
+    def position_control_loop(self):
+        """Position control loop - maintains drone position when active"""
+        if not self.position_hold_active:
+            return
+            
+        # Simple position hold - send zero velocity to maintain position
+        cmd = Twist()
+        cmd.linear.x = 0.0
+        cmd.linear.y = 0.0
+        cmd.linear.z = 0.0
+        cmd.angular.x = 0.0
+        cmd.angular.y = 0.0
+        cmd.angular.z = 0.0
+        
+        self.cmd_vel_pub.publish(cmd)
 
     def mission_loop(self):
         """Main mission loop - monitors mission progress"""
