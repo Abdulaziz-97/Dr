@@ -51,7 +51,7 @@ class PerceptionNode(Node):
             
         # Initialize DINOv3 model
         if DINOV3_AVAILABLE:
-            self.get_logger().info('Loading DINOv3 model (CPU mode)...')
+            self.get_logger().info('Loading DINOv2 model (CPU mode)...')
             self.dinov3_processor = AutoImageProcessor.from_pretrained('facebook/dinov2-small')
             self.dinov3_model = AutoModel.from_pretrained('facebook/dinov2-small')
             self.dinov3_model.eval()
@@ -69,7 +69,7 @@ class PerceptionNode(Node):
         
         # Publishers
         self.detections_pub = self.create_publisher(DetectionArray, '/detections', 10)
-        self.features_pub = self.create_publisher(DINOv3Features, '/dinov3_features', 10)
+        self.features_pub = self.create_publisher(DINOv3Features, '/dinov2_features', 10)
         
         # Processing rate limiter (CPU is slow)
         self.frame_count = 0
@@ -152,7 +152,7 @@ class PerceptionNode(Node):
                 if len(detection_array.detections) > 0:
                     person_count = sum(1 for d in detection_array.detections if d.class_name == 'person')
                     if person_count > 0:
-                        self.get_logger().info(f'👤 Detected {person_count} person(s), total {len(detection_array.detections)} objects')
+                        self.get_logger().info(f'Detected {person_count} person(s), total {len(detection_array.detections)} objects')
             
         except Exception as e:
             self.get_logger().error(f'YOLO detection error: {str(e)}')
@@ -180,7 +180,7 @@ class PerceptionNode(Node):
             self.features_pub.publish(features_msg)
             
         except Exception as e:
-            self.get_logger().error(f'DINOv3 feature extraction error: {str(e)}')
+            self.get_logger().error(f'DINOv2 feature extraction error: {str(e)}')
 
     def estimate_distance(self, bbox):
         """Simple distance estimation based on bounding box size"""
