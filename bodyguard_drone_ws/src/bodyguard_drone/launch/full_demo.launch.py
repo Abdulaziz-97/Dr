@@ -5,7 +5,8 @@ Full Demo Launch File - Launches all nodes and Gazebo simulation
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch.conditions import IfCondition, UnlessCondition
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, NotSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 from ament_index_python.packages import get_package_share_directory
@@ -36,7 +37,7 @@ def generate_launch_description():
     gazebo_client = ExecuteProcess(
         cmd=['gzclient'],
         output='screen',
-        condition=lambda: not headless
+        condition=UnlessCondition(headless)
     )
     
     # Spawn drone model
@@ -133,7 +134,7 @@ def generate_launch_description():
         name='rviz2',
         output='screen',
         arguments=['-d', PathJoinSubstitution([pkg_share, 'config', 'bodyguard_drone.rviz'])],
-        condition=lambda: not headless
+        condition=UnlessCondition(headless)
     )
     
     return LaunchDescription([
