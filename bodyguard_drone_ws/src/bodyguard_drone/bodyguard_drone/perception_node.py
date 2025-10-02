@@ -38,6 +38,8 @@ class PerceptionNode(Node):
             self.get_logger().info('Loading YOLO model (CPU mode)...')
             self.yolo_model = YOLO('yolov8n.pt')  # Nano model for CPU
             self.yolo_model.to('cpu')
+            # Log available classes
+            self.get_logger().info(f'YOLO classes: {list(self.yolo_model.names.values())}')
         else:
             self.yolo_model = None
             
@@ -121,8 +123,12 @@ class PerceptionNode(Node):
                     detection.y_max = float(xyxy[3])
                     
                     # Get class and confidence
-                    detection.class_name = result.names[int(box.cls)]
+                    class_id = int(box.cls)
+                    detection.class_name = result.names[class_id]
                     detection.confidence = float(box.conf)
+                    
+                    # Debug: log each detection
+                    self.get_logger().info(f'Detected: {detection.class_name} (conf: {detection.confidence:.2f})')
                     
                     # Estimate distance (simplified)
                     detection.distance = self.estimate_distance(xyxy)
