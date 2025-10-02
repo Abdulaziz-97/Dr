@@ -39,6 +39,7 @@ install(PROGRAMS
   bodyguard_drone/tts_node.py
   bodyguard_drone/drone_control_node.py
   bodyguard_drone/command_parser_node.py
+  bodyguard_drone/mission_controller_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
