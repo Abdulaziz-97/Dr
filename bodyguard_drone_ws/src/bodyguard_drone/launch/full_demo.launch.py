@@ -145,7 +145,7 @@ def generate_launch_description():
         
         # Gazebo
         gazebo_server,
-        # gazebo_client,  # Commented out for now, enable if GUI needed
+        gazebo_client,  # Gazebo GUI client
         
         # Spawn models
         spawn_drone,
@@ -161,5 +161,5 @@ def generate_launch_description():
         command_parser_node,
         
         # Visualization (optional)
-        # rviz_node,
+        rviz_node,
     ])
