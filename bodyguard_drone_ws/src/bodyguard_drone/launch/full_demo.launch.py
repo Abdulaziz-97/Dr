@@ -59,7 +59,7 @@ def generate_launch_description():
         arguments=[
             '-entity', 'person_with_ring',
             '-file', PathJoinSubstitution([pkg_share, 'models', 'person_with_ring', 'model.sdf']),
-            '-x', '-2', '-y', '0', '-z', '0'
+            '-x', '2', '-y', '0', '-z', '0'
         ],
         output='screen'
     )

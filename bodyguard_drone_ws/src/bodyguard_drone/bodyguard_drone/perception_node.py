@@ -95,14 +95,21 @@ class PerceptionNode(Node):
     def detect_objects(self, image, header):
         """Detect objects using YOLO"""
         try:
-            results = self.yolo_model(image, verbose=False)
+            # Lower confidence threshold and add debugging
+            results = self.yolo_model(image, verbose=False, conf=0.1)  # Lower confidence threshold
+            self.get_logger().info(f'YOLO processed image shape: {image.shape}')
             
             detection_array = DetectionArray()
             detection_array.header = header
             
             for result in results:
                 boxes = result.boxes
-                for box in boxes:
+                if boxes is not None:
+                    self.get_logger().info(f'YOLO found {len(boxes)} raw detections')
+                else:
+                    self.get_logger().info('YOLO found no boxes')
+                    
+                for box in boxes if boxes is not None else []:
                     detection = Detection()
                     detection.header = header
                     
