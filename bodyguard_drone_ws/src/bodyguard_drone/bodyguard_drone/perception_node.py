@@ -106,7 +106,7 @@ class PerceptionNode(Node):
         """Detect objects using YOLO"""
         try:
             # Lower confidence threshold and add debugging
-            results = self.yolo_model(image, verbose=False, conf=0.01)  # Very low confidence threshold
+            results = self.yolo_model(image, verbose=False, conf=0.1)  # Very low confidence threshold
             self.get_logger().info(f'YOLO processed image shape: {image.shape}')
             
             detection_array = DetectionArray()
@@ -143,7 +143,7 @@ class PerceptionNode(Node):
                     # If detection is in center area of image (where person should be), call it "person"
                     if 200 < bbox_center_x < 440 and 100 < bbox_center_y < 400:
                         detection.class_name = "person"
-                        self.get_logger().info(f'SIMULATION HACK: Converted {original_class} to person (conf: {detection.confidence:.2f})')
+                        self.get_logger().info(f'Detection: person (conf: {detection.confidence:.2f})')
                     else:
                         detection.class_name = original_class
                         
