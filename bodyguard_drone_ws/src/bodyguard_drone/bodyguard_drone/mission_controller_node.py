@@ -29,6 +29,10 @@ class MissionControllerNode(Node):
         self.current_position = {'x': 0.0, 'y': 0.0, 'z': 0.5}
         self.position_hold_active = False
         
+        # Detection tracking for mission summaries
+        self.mission_detections = {'total': 0, 'persons': 0, 'objects': 0}
+        self.mission_start_detections = 0
+        
         # Publishers
         self.user_event_pub = self.create_publisher(UserEvent, '/user_event', 10)
         self.cmd_vel_pub = self.create_publisher(Twist, '/drone/cmd_vel', 10)
@@ -54,6 +58,10 @@ class MissionControllerNode(Node):
         self.mission_active = True
         self.current_mission = 1
         self.mission_start_time = time.time()
+        self.mission_start_detections = self.detections_received
+        # Reset detection counters for mission
+        self.mission_detections = {'total': 0, 'persons': 0, 'objects': 0}
+        
         self.get_logger().info('STARTING MISSION SEQUENCE')
         
         # Start Mission 1 after 5 seconds
@@ -72,13 +80,25 @@ class MissionControllerNode(Node):
             self.get_logger().info(f'Waiting for perception... ({self.detections_received}/10 detections received)')
 
     def detections_callback(self, msg):
-        """Monitor person detections"""
+        """Monitor person detections and count for mission summaries"""
         self.detections_received += 1
         self.person_detected = False
-        for detection in msg.detections:
-            if detection.class_name == 'person':
-                self.person_detected = True
-                break
+        
+        # Count detections for mission summary
+        if self.mission_active:
+            self.mission_detections['total'] += len(msg.detections)
+            for detection in msg.detections:
+                if detection.class_name == 'person':
+                    self.person_detected = True
+                    self.mission_detections['persons'] += 1
+                else:
+                    self.mission_detections['objects'] += 1
+        else:
+            # Pre-mission detection counting
+            for detection in msg.detections:
+                if detection.class_name == 'person':
+                    self.person_detected = True
+                    break
 
     def execute_mission_1(self):
         """Mission 1: Kid gets kidnapped - trigger panic"""
@@ -102,6 +122,10 @@ class MissionControllerNode(Node):
         self.tts_pub.publish(tts_msg)
         
         self.get_logger().info('Mission 1 executed - Panic mode activated')
+        
+        # Mission 1 summary
+        elapsed = time.time() - self.mission_start_time
+        self.get_logger().info(f' MISSION 1 SUMMARY: Duration: {elapsed:.1f}s | Detections: {self.mission_detections["total"]} total, {self.mission_detections["persons"]} persons, {self.mission_detections["objects"]} objects')
         
         # Schedule Mission 2 after 15 seconds
         threading.Timer(15.0, self.execute_mission_2).start()
@@ -159,6 +183,14 @@ class MissionControllerNode(Node):
         threading.Timer(6.0, self.announce_positioning_complete).start()
         
         self.get_logger().info('Mission 2 completed - STT query processed and answered')
+        
+        # Mission 2 summary
+        elapsed = time.time() - self.mission_start_time
+        self.get_logger().info(f'MISSION 2 SUMMARY: Duration: {elapsed:.1f}s | Detections: {self.mission_detections["total"]} total, {self.mission_detections["persons"]} persons, {self.mission_detections["objects"]} objects')
+        
+        # Final mission sequence summary
+        total_elapsed = time.time() - self.mission_start_time
+        self.get_logger().info(f'COMPLETE MISSION SEQUENCE SUMMARY: Total Duration: {total_elapsed:.1f}s | Total Detections: {self.mission_detections["total"]} | Persons Found: {self.mission_detections["persons"]} | Other Objects: {self.mission_detections["objects"]}')
 
     def announce_positioning_complete(self):
         """Announce that drone is positioned and ready"""
@@ -234,7 +266,7 @@ class MissionControllerNode(Node):
             self.get_logger().info('Mission 1 timeout - proceeding to Mission 2')
             self.execute_mission_2()
         elif self.current_mission == 2 and elapsed > 90:
-            self.get_logger().info('🏁 Mission sequence completed successfully')
+            self.get_logger().info('Mission sequence completed successfully')
             self.mission_active = False
 
 

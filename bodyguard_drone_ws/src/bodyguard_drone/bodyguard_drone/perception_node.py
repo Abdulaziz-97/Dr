@@ -45,9 +45,7 @@ class PerceptionNode(Node):
                 self.yolo_model = YOLO('yolov8n.pt')
                 
             self.yolo_model.to('cpu')
-            # Log available classes
-            self.get_logger().info(f'YOLO classes: {list(self.yolo_model.names.values())}')
-            self.get_logger().info(f'Model type: {type(self.yolo_model).__name__}')
+            self.get_logger().info('YOLO model ready for detection')
         else:
             self.yolo_model = None
             
@@ -105,19 +103,14 @@ class PerceptionNode(Node):
     def detect_objects(self, image, header):
         """Detect objects using YOLO"""
         try:
-            # Lower confidence threshold and add debugging
-            results = self.yolo_model(image, verbose=False, conf=0.1)  # Very low confidence threshold
-            self.get_logger().info(f'YOLO processed image shape: {image.shape}')
+            # Lower confidence threshold for better detection
+            results = self.yolo_model(image, verbose=False, conf=0.01)  # Very low confidence threshold
             
             detection_array = DetectionArray()
             detection_array.header = header
             
             for result in results:
                 boxes = result.boxes
-                if boxes is not None:
-                    self.get_logger().info(f'YOLO found {len(boxes)} raw detections')
-                else:
-                    self.get_logger().info('YOLO found no boxes')
                     
                 for box in boxes if boxes is not None else []:
                     detection = Detection()
@@ -148,16 +141,18 @@ class PerceptionNode(Node):
                     else:
                         detection.class_name = original_class
                         
-                    # Log detection (shows converted result)
-                    self.get_logger().info(f'Detected: {detection.class_name} (conf: {detection.confidence:.2f}) at center ({bbox_center_x:.0f},{bbox_center_y:.0f})')
-                    
                     # Estimate distance (simplified)
                     detection.distance = self.estimate_distance(xyxy)
                     
                     detection_array.detections.append(detection)
-            
-            self.detections_pub.publish(detection_array)
-            self.get_logger().info(f'Published {len(detection_array.detections)} detections')
+                
+                self.detections_pub.publish(detection_array)
+                
+                # Only log if detections found or every 10th cycle for status
+                if len(detection_array.detections) > 0:
+                    person_count = sum(1 for d in detection_array.detections if d.class_name == 'person')
+                    if person_count > 0:
+                        self.get_logger().info(f'👤 Detected {person_count} person(s), total {len(detection_array.detections)} objects')
             
         except Exception as e:
             self.get_logger().error(f'YOLO detection error: {str(e)}')
@@ -183,7 +178,6 @@ class PerceptionNode(Node):
             features_msg.features = features.flatten().cpu().numpy().tolist()
             
             self.features_pub.publish(features_msg)
-            self.get_logger().info('Published DINOv3 features')
             
         except Exception as e:
             self.get_logger().error(f'DINOv3 feature extraction error: {str(e)}')
